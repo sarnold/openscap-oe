@@ -75,6 +75,12 @@ EXTRA_DIST += \
 	test_fix_resultid_by_suffix.xml \
 	test_fix_script_header.sh \
 	test_fix_script_header.xccdf.xml \
+	test_generate_fix_ansible_vars.sh \
+	test_generate_fix_ansible_vars_ds.xml \
+	test_generate_fix_ansible_vars_ds-tailoring.xml \
+	test_generate_fix_ansible_vars_golden.yml \
+	test_generate_fix_ansible_vars_golden_altered.yml \
+	test_generate_fix_ansible_vars_golden_tailoring.yml \
 	test_inherit_selector.oval.xml \
 	test_inherit_selector.sh \
 	test_inherit_selector.tailoring.xml \
@@ -112,6 +118,8 @@ EXTRA_DIST += \
 	test_remediation_simple.oval.xml \
 	test_remediation_simple.sh \
 	test_remediation_simple.xccdf.xml \
+	test_remediation_metadata.sh \
+	test_remediation_metadata.xccdf.xml \
 	test_remediation_subs_plain_text.sh \
 	test_remediation_subs_plain_text.xccdf.xml \
 	test_remediation_subs_plain_text_empty.sh \
@@ -139,6 +147,7 @@ EXTRA_DIST += \
 	test_report_without_oval_poses_no_errors.xccdf.xml.result.xml \
 	test_report_without_xsl_fails_gracefully.sh \
 	test_single_rule.sh \
+	test_single_rule_stigw.sh correct_stigw_result.xml stig-viewer-equivalence.py \
 	test_single_rule.ds.xml \
 	test_single_rule.oval.xml \
 	test_single_rule-tailoring.xml \

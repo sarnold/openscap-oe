@@ -390,6 +390,17 @@ OSCAP_HIDDEN_END;
 /// Print to a newly allocated string using varialbe arguments.
 char *oscap_sprintf(const char *fmt, ...);
 
+/**
+ * Join 2 paths in an intelligent way.
+ * Both paths are allowed to be NULL.
+ * Caller is responsible for freeing the returned pointer.
+ * @param path1 first path
+ * @param path2 second path
+ * @return Join of path1 and path2. The first path is separated by the second
+ * path by exactly 1 slash separator.
+ */
+char *oscap_path_join(const char *path1, const char *path2);
+
 OSCAP_HIDDEN_START;
 
 /// In a list of key-value pairs (odd indicies are keys, even values), find a value for given key
@@ -420,6 +431,12 @@ char *oscap_expand_ipv6(const char *input);
 # define OSCAP_CONCAT(a,b) OSCAP_CONCAT1(a,b)
 #endif
 
+/**
+ * Mark global symbols.
+ * This macro can be used to wrap global variables and helps distinguish
+ * global variables and local varibles.
+ * It adds '___G_' prefix to variable name.
+ */
 #define OSCAP_GSYM(s) OSCAP_CONCAT(___G_, s)
 
 #define protect_errno                                                   \

@@ -5,7 +5,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.59)
-AC_INIT([openscap], [1.2.16], [open-scap-list@redhat.com])
+AC_INIT([openscap], [1.2.17], [open-scap-list@redhat.com])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
@@ -18,7 +18,6 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_DISABLE_STATIC
 #build dll on windows(cygwin)
 AC_LIBTOOL_WIN32_DLL
-AM_PATH_PYTHON
 
 # Checks for programs.
 AC_PROG_CC
@@ -39,15 +38,15 @@ AC_PROG_SWIG([])
 # See http://sources.redhat.com/autobook/autobook/autobook_91.html#SEC91 for details
 
 ## increment if the interface has additions, changes, removals.
-LT_CURRENT=21
+LT_CURRENT=22
 
 ## increment any time the source changes; set 0 to if you increment CURRENT
-LT_REVISION=0
+LT_REVISION=1
 
 ## increment if any interfaces have been added; set to 0
 ## if any interfaces have been changed or removed. removal has
 ## precedence over adding, so set to 0 if both happened.
-LT_AGE=13
+LT_AGE=14
 
 LT_CURRENT_MINUS_AGE=`expr $LT_CURRENT - $LT_AGE`
 
@@ -115,46 +114,27 @@ AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 
-AM_CHECK_PYTHON_HEADERS
+# Check for pthreads support: http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_pthread.m4
+AX_PTHREAD()
 
-#
-# threads
-#
-pthread_CFLAGS=error
-pthread_LIBS=error
-SAVE_LIBS=$LIBS
-
-if test "x$pthread_LIBS" = "xerror"; then
-   AC_CHECK_LIB(c_r, pthread_attr_init, [
-                     pthread_CFLAGS="-DOSCAP_THREAD_SAFE -D_THREAD_SAFE -pthread"
-                     pthread_LIBS="-pthread -lrt" ])
-fi
-
-if test "x$pthread_LIBS" = "xerror"; then
-   AC_CHECK_LIB(pthread, pthread_attr_init, [
-                         pthread_CFLAGS="-DOSCAP_THREAD_SAFE -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-                         pthread_LIBS="-lpthread -lrt" ])
-fi
-
-if test "x$pthread_LIBS" = "xerror"; then
-   AC_CHECK_LIB(pthreads, pthread_attr_init, [
-                          pthread_CFLAGS="-DOSCAP_THREAD_SAFE -D_THREAD_SAFE"
-                          pthread_LIBS="-lpthreads -lrt" ])
-fi
-
-if test "x$pthread_LIBS" = "xerror"; then
+if test "x$ax_pthread_ok" != "xyes"; then
    AC_MSG_FAILURE(pthread library is missing)
 fi
 
+SAVE_LIBS=$LIBS
 SAVE_CFLAGS=$CFLAGS
-CFLAGS="$CFLAGS -D_GNU_SOURCE"
-LIBS="$pthread_LIBS"
-AC_CHECK_FUNCS([pthread_timedjoin_np pthread_setname_np pthread_getname_np clock_gettime])
-CFLAGS=$SAVE_CFLAGS
 
+CFLAGS="$CFLAGS -D_GNU_SOURCE"
+LIBS="$PTHREAD_LIBS"
+
+AC_CHECK_FUNCS([pthread_timedjoin_np pthread_setname_np pthread_getname_np clock_gettime])
+
+CFLAGS=$SAVE_CFLAGS
 LIBS=$SAVE_LIBS
-AC_SUBST(pthread_CFLAGS)
-AC_SUBST(pthread_LIBS)
+
+AC_SUBST([PTHREAD_CFLAGS])
+AC_SUBST([PTHREAD_LIBS])
+
 
 PKG_CHECK_MODULES([curl], [libcurl >= 7.12.0],[],
                           AC_MSG_FAILURE([libcurl devel support is missing]))
@@ -338,24 +318,22 @@ AC_ARG_ENABLE([cce],
      esac],[cce=no])
 
 AC_ARG_ENABLE([python],
-     [AC_HELP_STRING([--enable-python], [enable compilation of python2 bindings (default=yes)])],
+     [AC_HELP_STRING([--enable-python], [enable compilation of python2 bindings (default=auto)])],
      [case "${enableval}" in
-       yes) python_bind=yes ;;
-       no)  python_bind=no  ;;
+       yes) python2_bind=yes ;;
+       no)  python2_bind=no  ;;
+       auto)  python2_bind=auto  ;;
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-python]) ;;
-     esac],[python_bind=yes])
+     esac],[python2_bind=auto])
 
 AC_ARG_ENABLE([python3],
-	[AC_HELP_STRING([--enable-python3], [enable compilation of python3 bindings (default=no)])],
+	[AC_HELP_STRING([--enable-python3], [enable compilation of python3 bindings (default=auto)])],
 	[case "${enableval}" in
 		yes) python3_bind=yes ;;
 		no) python3_bind=no ;;
+		auto) python3_bind=auto ;;
 		*) AC_MSG_ERROR([bad value ${enableval} for --enable-python3]);;
-	esac],[python3_bind=no])
-
-
-AC_ARG_VAR([preferred_python], [set preferred Python interpreter])
-AS_IF([test "$preferred_python" = ""], [preferred_python=$PYTHON])
+	esac],[python3_bind=auto])
 
 AC_ARG_ENABLE([perl],
      [AC_HELP_STRING([--enable-perl], [enable compilation of perl bindings (default=no)])],
@@ -456,8 +434,15 @@ AC_ARG_ENABLE([sce],
        *) AC_MSG_ERROR([bad value ${enableval} for --enable-sce]) ;;
      esac],[sce=no])
 
+AC_ARG_WITH([oscap-temp-dir],
+     [AS_HELP_STRING([--with-oscap-temp-dir],
+     [use different temporary directory to execute sce scripts [default=/tmp]])],
+     [],
+     [with_oscap_temp_dir="/tmp"])
+
 if test "x${sce}" = xyes; then
   AC_DEFINE([ENABLE_SCE], [1], [compilation of script check engine enabled])
+  CFLAGS="$CFLAGS -DOSCAP_TEMP_DIR=\\\"${with_oscap_temp_dir}\\\"" # double escape needed for compilation on some systems
 fi
 
 AC_ARG_ENABLE([util-oscap],
@@ -539,36 +524,90 @@ if test "x${perl_bind}" = xyes; then
 	CPPFLAGS="$save_CPPFLAGS"
 fi
 
-# (AM_PATH_PYTHON) cannot be used for multiple Python version at once
-if test "x${python3_bind}" = xyes; then
-	AC_PATH_PROG([PYTHON3], [python3])
-	AC_PATH_PROG([PYTHON3_CONFIG], [python3-config], [no])
-		[if test "$PYTHON3_CONFIG" = "no"]
-		[then]
-			[echo "The python3-config program was not found in the search path. Please ensure"]
-			[echo "that it is installed and its directory is included in the search path."]
-			[echo "Then run configure again before attempting to build OpenSCAP."]
-			[exit 1]
-		[fi]
-	PYTHON3_CFLAGS=`python3-config --cflags 2> /dev/null`
-	PYTHON3_LIBS=`python3-config --libs 2> /dev/null`
-	PYTHON3_INCLUDES=`python3-config --includes 2> /dev/null`
 
-	# the string concatenation below is just a trick to prevent substitution
-	PYTHON3_DIR=`$PYTHON3 -c "import distutils.sysconfig; \
-		print(distutils.sysconfig.get_python_lib(0,0,prefix='$' '{prefix}'))"`
-	PYTHON3_EXECDIR=`$PYTHON3 -c "import distutils.sysconfig; \
-		print(distutils.sysconfig.get_python_lib(1,0,prefix='$' '{exec_prefix}'))"`
+dnl $1: Python major version
+dnl $2: How to announce it
+m4_define([TELL_PYTHON_NOT_PRESENT], [$2(
+	[python $1 bindings were requested, but the appropriate python interpreter was not found in the search path.
+Please ensure that it is installed and available, or run configure with --disable-python$1 option.])])
 
-	AC_SUBST(PYTHON3_CFLAGS)
-	AC_SUBST(PYTHON3_LIBS)
-	AC_SUBST(PYTHON3_INCLUDES)
-	AC_SUBST(python3dir, $PYTHON3_DIR)
-	AC_SUBST(py3execdir, $PYTHON3_EXECDIR)
-fi
+dnl $1: Python major version
+dnl $2: How to announce it
+m4_define([TELL_PYTHON_DEVEL_NOT_PRESENT], [$2(
+	[python $1 bindings were requested and there is an interpreter, but the development support is missing.
+Please ensure that it is installed and available, or run configure with --disable-python$1 option.])])
+
+# TODO: Handle the bindings yes/no -> interpreter yes/no -> devel yes/no situation
+
+dnl python_bind can be set either to yes, no or auto. It will be set to yes or no after the evaluation.
+dnl
+dnl $1: Python major version
+m4_define([EVALUATE_PYTHON_CHECK_RESULT],
+	[m4_if([$1], , [m4_fatal([The $0 macro needs Python major version as its first argument.])])
+	AS_IF([test "x${python$1_bind}" = xyes && test "x$HAVE_PYTHON$1" = xno],
+		[python$1_bind=no
+		TELL_PYTHON_NOT_PRESENT([$1], [AC_MSG_ERROR])],
+		[test "x$python$1_bind" = xauto && test "x$HAVE_PYTHON$1" = xno],
+		[python$1_bind=no
+		TELL_PYTHON_NOT_PRESENT([$1], [AC_MSG_NOTICE])],
+		[test "x$python$1_bind" != xno && test "x$HAVE_PYTHON$1" = xyes],
+		[AM_CONFIGURE_PYTHON_FLAGS([PYTHON$1],
+			[${PYTHON$1}],
+			[python$1_bind=yes],
+			[AS_IF([test "x$python$1_bind" = xauto],
+				[python$1_bind=no
+				TELL_PYTHON_DEVEL_NOT_PRESENT([$1], [AC_MSG_NOTICE])],
+				[TELL_PYTHON_DEVEL_NOT_PRESENT([$1], [AC_MSG_ERROR])])])])])
+
+dnl
+dnl $1: The Python interpreter to check
+dnl $2: The module to check
+dnl $3: Action if OK
+dnl $4: Action if not OK
+m4_define([PYTHON_CHECK_FOR_INSTALLED_MODULE],
+	[AS_IF(["$1" -c 'import $2' 2> /dev/null],
+		[$3], [$4])])
+
+dnl
+dnl $1: Python major version
+m4_define([_ATTEMPT_TO_SET_PREFERRED_PYTHON_FOR_OSCAP_DOCKER],
+	[AS_IF([test "$HAVE_PYTHON$1" = yes],
+		[AC_MSG_CHECKING([whether ${PYTHON$1} can import Atomic])
+		 PYTHON_CHECK_FOR_INSTALLED_MODULE(
+			[${PYTHON$1}], [Atomic],
+			[AC_MSG_RESULT([yes])
+			 preferred_python="${PYTHON$1}"],
+			 AC_MSG_RESULT([no]))])])
+
+AM_PATH_PYTHON_OF_MAJOR_VERSION([2], [2.6], [HAVE_PYTHON2=yes], [HAVE_PYTHON2=no])
+AM_PATH_PYTHON_OF_MAJOR_VERSION([3], [3.4], [HAVE_PYTHON3=yes], [HAVE_PYTHON3=no])
+
+EVALUATE_PYTHON_CHECK_RESULT(3)
+EVALUATE_PYTHON_CHECK_RESULT(2)
+
+# Just to have PYTHON defined so Automake doesn't freak out.
+# Therefore, we define it to one of available interpreters in favor of Python 3
+PYTHON=:
+test "x$HAVE_PYTHON2" = xyes && PYTHON="$PYTHON2"
+test "x$HAVE_PYTHON3" = xyes && PYTHON="$PYTHON3"
+AC_SUBST([PYTHON])
+
+preferred_python=:
+
+AS_IF([test "x$util_oscap_docker" = xyes],
+	[_ATTEMPT_TO_SET_PREFERRED_PYTHON_FOR_OSCAP_DOCKER(2)
+	_ATTEMPT_TO_SET_PREFERRED_PYTHON_FOR_OSCAP_DOCKER(3)
+	AS_IF([test "$preferred_python" = :],
+		[AS_IF([test "$PYTHON" != :],
+			[AC_MSG_NOTICE([Couldnt detect preferred python interpreter for oscap-docker. If you can, make sure one can import the 'Atomic' module and re-run the configure script.])
+			AC_MSG_NOTICE([Setting the oscap-docker python to '$PYTHON'.])
+			preferred_python="$PYTHON"],
+			[AC_MSG_ERROR([Not found a working Python interpreter and oscap-docker needs it. Aborting, as oscap-docker has been requested.])])])])
 
 # oscap-docker determine python dir on default python version
 OSCAPDOCKER_PYTHONDIR=`$preferred_python -c "import distutils.sysconfig; print(distutils.sysconfig.get_python_lib(0,0,prefix='$' '{prefix}'))"`
+# oscap-docker uses preferred_python substitution
+AC_SUBST([preferred_python])
 AC_SUBST(oscapdocker_pythondir, $OSCAPDOCKER_PYTHONDIR)
 
 @@@@PROBE_EVAL@@@@
@@ -587,7 +626,7 @@ AM_CONDITIONAL([WANT_UTIL_OSCAP_SSH], test "$util_oscap_ssh" = yes)
 AM_CONDITIONAL([WANT_UTIL_OSCAP_DOCKER], test "$util_oscap_docker" = yes)
 AM_CONDITIONAL([WANT_UTIL_OSCAP_VM], test "$util_oscap_vm" = yes)
 AM_CONDITIONAL([WANT_UTIL_OSCAP_CHROOT], test "$util_oscap_chroot" = yes)
-AM_CONDITIONAL([WANT_PYTHON], test "$python_bind" = yes)
+AM_CONDITIONAL([WANT_PYTHON2], test "$python2_bind" = yes)
 AM_CONDITIONAL([WANT_PYTHON3], test "$python3_bind" = yes)
 AM_CONDITIONAL([WANT_PERL], test "$perl_bind" = yes)
 AM_CONDITIONAL([ENABLE_VALGRIND_TESTS], test "$vgcheck" = yes)
@@ -673,6 +712,9 @@ AC_CONFIG_FILES([Makefile
                  src/CVE/Makefile
                  tests/API/CVE/Makefile
 
+                 src/CVRF/Makefile
+                 tests/API/CVRF/Makefile
+
                  src/CPE/Makefile
                  tests/API/CPE/Makefile
                  tests/API/CPE/name/Makefile
@@ -711,6 +753,7 @@ AC_CONFIG_FILES([Makefile
 		tests/codestyle/Makefile
 		tests/oval_details/Makefile
 		tests/nist/Makefile
+		tests/offline_mode/Makefile
 
                  src/SCE/Makefile
                  tests/sce/Makefile])
@@ -733,7 +776,7 @@ echo "oscap-ssh tool:                $util_oscap_ssh"
 echo "oscap-docker tool:             $util_oscap_docker"
 echo "oscap-vm tool:                 $util_oscap_vm"
 echo "oscap-chroot tool:             $util_oscap_chroot"
-echo "python2 bindings enabled:      $python_bind"
+echo "python2 bindings enabled:      $python2_bind"
 echo "python3 bindings enabled:      $python3_bind"
 echo "perl bindings enabled:         $perl_bind"
 echo "use POSIX regex:               $regex_posix"

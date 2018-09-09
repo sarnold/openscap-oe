@@ -46,6 +46,7 @@
 #include <scap_ds.h>
 #include <ds_rds_session.h>
 #include <ds_sds_session.h>
+#include <xccdf_session.h>
 
 #include "oscap-tool.h"
 
@@ -61,9 +62,9 @@ struct oscap_module OSCAP_INFO_MODULE = {
     .help = "Print information about a file\n"
     "\n"
     "Options:\n"
-    "   --fetch-remote-resources \r\t\t\t\t - Download remote content referenced by DataStream.\n"
-    "   --profile <id>\r\t\t\t\t - Show info of the profile with the given ID..\n"
-    "   --profiles\r\t\t\t\t - Show profiles from the input file in the <id>:<title> format, one line per profile.\n",
+		"   --fetch-remote-resources      - Download remote content referenced by DataStream.\n"
+		"   --profile <id>                - Show info of the profile with the given ID..\n"
+		"   --profiles                    - Show profiles from the input file in the <id>:<title> format, one line per profile.\n",
     .opt_parser = getopt_info,
     .func = app_info
 };
@@ -140,7 +141,7 @@ static void _print_xccdf_profile_verbose(const struct xccdf_profile *prof, const
 	printf("%s\tTitle: %s\n", prefix, profile_title);
 	free(profile_title);
 
-	printf("%s\tId: %s%s\n", prefix,
+	printf("%s\tId: %s%s\n\n", prefix,
 		xccdf_profile_get_id(prof),
 		xccdf_profile_get_abstract(prof) ? " (abstract)" : "");
 
@@ -726,6 +727,10 @@ static int app_info(const struct oscap_action *action)
 	case OSCAP_DOCUMENT_CVE_FEED:
 		printf("Document type: CVE Feed\n");
 		// TODO: Provide more info about CVE feeds
+	break;
+	case OSCAP_DOCUMENT_CVRF_FEED:
+		printf("Document type: CVRF Feed\n");
+		// TODO: Provide more info about CVRF feeds
 	break;
 	case OSCAP_DOCUMENT_SCE_RESULT:
 		printf("Document type: SCE Result File\n");

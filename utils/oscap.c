@@ -33,6 +33,8 @@
 #include <errno.h>
 #include <limits.h>
 
+#include <oscap.h>
+#include <oscap_error.h>
 #include "oscap-tool.h"
 #include "check_engine_plugin.h"
 #include "oscap_source.h"
@@ -48,6 +50,7 @@ struct oscap_module* OSCAP_ROOT_SUBMODULES[] = {
     &OSCAP_CVSS_MODULE,
     &OSCAP_CPE_MODULE,
     &OSCAP_CVE_MODULE,
+    &OSCAP_CVRF_MODULE,
     &OSCAP_VERSION_MODULE,
     &OSCAP_INFO_MODULE,
     NULL
@@ -60,9 +63,9 @@ struct oscap_module OSCAP_ROOT_MODULE = {
     .summary = "OpenSCAP command-line tool",
     .help =
 		"oscap options:\n"
-		"   -h --help\r\t\t\t\t - show this help\n"
-		"   -q --quiet\r\t\t\t\t - quiet mode\n"
-		"   -V --version\r\t\t\t\t - print info about supported SCAP versions",
+		"   -h --help                     - show this help\n"
+		"   -q --quiet                    - quiet mode\n"
+		"   -V --version                  - print info about supported SCAP versions",
     .opt_parser = getopt_root,
     .submodules = OSCAP_ROOT_SUBMODULES
 };
@@ -119,6 +122,7 @@ static int print_versions(const struct oscap_action *action)
 	printf("CVE Version: %s\n", cve_model_supported());
 	printf("Asset Identification Version: %s\n", "1.1");
 	printf("Asset Reporting Format Version: %s\n", "1.1");
+	printf("CVRF Version: %s\n", cvrf_model_supported());
 	printf("\n");
 
 	printf("==== Capabilities added by auto-loaded plugins ====\n");

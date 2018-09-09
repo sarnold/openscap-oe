@@ -9,7 +9,7 @@ SCE_SUBDIRS = sce
 endif
 
 BINDINGS_SUBDIRS=
-if WANT_PYTHON
+if WANT_PYTHON2
   BINDINGS_SUBDIRS += bindings
 else
 if WANT_PERL
@@ -26,6 +26,7 @@ SUBDIRS = \
 	sources \
 	schemas \
 	nist \
+	offline_mode \
 	oscap_string \
 	oval_details \
 	$(PROBE_SUBDIRS) $(SCE_SUBDIRS) $(BINDINGS_SUBDIRS)
@@ -33,6 +34,7 @@ SUBDIRS = \
 EXTRA_DIST = \
 	suppressions.supp \
 	valgrind_test.sh \
-	xmldiff.pl
+	xmldiff.pl \
+	test_common.sh.in
 
 CONFIG_CLEAN_FILES = test_common.sh

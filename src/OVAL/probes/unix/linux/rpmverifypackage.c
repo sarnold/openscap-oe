@@ -310,9 +310,10 @@ ret:
 	return (ret);
 }
 
-void probe_offline_mode ()
+int probe_offline_mode_supported()
 {
-	probe_setoption(PROBEOPT_OFFLINE_MODE_SUPPORTED, PROBE_OFFLINE_OWN);
+	// TODO: Switch this to OFFLINE_MODE_OWN once rpmtsSetRootDir is fully supported by librpm
+	return PROBE_OFFLINE_CHROOT;
 }
 
 void *probe_init (void)

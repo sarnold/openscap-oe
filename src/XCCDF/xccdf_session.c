@@ -97,6 +97,7 @@ struct xccdf_session {
 	struct {
 		char *arf_file;				///< Path to ARF file to export
 		char *xccdf_file;			///< Path to XCCDF file to export
+		char *xccdf_stig_viewer_file;		///< Path to STIG Viewer XCCDF file to export
 		char *report_file;			///< Path to HTML file to eport
 		bool oval_results;			///< Shall be the OVAL results files exported?
 		bool oval_variables;			///< Shall be the OVAL variable files exported?
@@ -246,6 +247,7 @@ void xccdf_session_free(struct xccdf_session *session)
 		return;
 	free(session->xccdf.profile_id);
 	free(session->export.xccdf_file);
+	free(session->export.xccdf_stig_viewer_file);
 	free(session->export.report_file);
 	free(session->export.arf_file);
 	_xccdf_session_free_oval_result_sources(session);
@@ -411,6 +413,13 @@ bool xccdf_session_set_xccdf_export(struct xccdf_session *session, const char *x
 {
 	free(session->export.xccdf_file);
 	session->export.xccdf_file = oscap_strdup(xccdf_file);
+	return true;
+}
+
+bool xccdf_session_set_xccdf_stig_viewer_export(struct xccdf_session *session, const char *xccdf_stig_viewer_file)
+{
+	free(session->export.xccdf_stig_viewer_file);
+	session->export.xccdf_stig_viewer_file = oscap_strdup(xccdf_stig_viewer_file);
 	return true;
 }
 
@@ -851,7 +860,7 @@ void xccdf_session_set_custom_oval_files(struct xccdf_session *session, char **o
 
 	for (int i = 0; oval_filenames[i];) {
 		resources[i] = malloc(sizeof(struct oval_content_resource));
-		resources[i]->href = strdup(basename(oval_filenames[i]));
+		resources[i]->href = oscap_strdup(basename(oval_filenames[i]));
 		resources[i]->source = oscap_source_new_from_file(oval_filenames[i]);
 		resources[i]->source_owned = true;
 		i++;
@@ -875,7 +884,7 @@ static int _xccdf_session_get_oval_from_model(struct xccdf_session *session)
 
 	_oval_content_resources_free(session->oval.resources);
 
-	xccdf_path_cpy = strdup(oscap_source_readable_origin(session->xccdf.source));
+	xccdf_path_cpy = oscap_strdup(oscap_source_readable_origin(session->xccdf.source));
 	dir_path = dirname(xccdf_path_cpy);
 
 	resources = malloc(sizeof(struct oval_content_resource *));
@@ -912,7 +921,7 @@ static int _xccdf_session_get_oval_from_model(struct xccdf_session *session)
 
 		if (source != NULL || stat(tmp_path, &sb) == 0) {
 			resources[idx] = malloc(sizeof(struct oval_content_resource));
-			resources[idx]->href = strdup(oscap_file_entry_get_file(file_entry));
+			resources[idx]->href = oscap_strdup(oscap_file_entry_get_file(file_entry));
 			if (source == NULL) {
 				source = oscap_source_new_from_file(tmp_path);
 				resources[idx]->source_owned = true;
@@ -941,7 +950,7 @@ static int _xccdf_session_get_oval_from_model(struct xccdf_session *session)
 						session->oval.progress(false, "ok\n");
 
 						resources[idx] = malloc(sizeof(struct oval_content_resource));
-						resources[idx]->href = strdup(printable_path);
+						resources[idx]->href = oscap_strdup(printable_path);
 						resources[idx]->source = oscap_source_new_take_memory(data, data_size, printable_path);
 						resources[idx]->source_owned = true;
 						idx++;
@@ -1265,22 +1274,32 @@ static int _build_xccdf_result_source(struct xccdf_session *session)
 	}
 
 	/* Build oscap_source of XCCDF TestResult only when needed */
-	if (session->export.xccdf_file != NULL || session->export.report_file != NULL || session->export.arf_file != NULL) {
+	if (session->export.xccdf_file != NULL || session->export.report_file != NULL || session->export.arf_file != NULL || session->export.xccdf_stig_viewer_file != NULL) {
+		const struct xccdf_benchmark *benchmark = xccdf_policy_model_get_benchmark(session->xccdf.policy_model);
+
 		if (session->xccdf.result == NULL) {
 			// Attempt to export session before evaluation
 			oscap_seterr(OSCAP_EFAMILY_OSCAP, "No XCCDF results to export.");
 			return 1;
 		}
-		xccdf_benchmark_add_result(xccdf_policy_model_get_benchmark(session->xccdf.policy_model),
-				xccdf_result_clone(session->xccdf.result));
-		session->xccdf.result_source = xccdf_benchmark_export_source(
-				xccdf_policy_model_get_benchmark(session->xccdf.policy_model), session->export.xccdf_file);
+		struct xccdf_result* cloned_result = xccdf_result_clone(session->xccdf.result);
+		xccdf_benchmark_add_result(benchmark, cloned_result);
+		session->xccdf.result_source = xccdf_benchmark_export_source(benchmark, session->export.xccdf_file);
 
 		if (session->export.xccdf_file != NULL) {
 			// Export XCCDF result file only when explicitly requested
 			if (oscap_source_save_as(session->xccdf.result_source, NULL) != 0) {
 				oscap_seterr(OSCAP_EFAMILY_OSCAP, "Could not save file: %s",
 						oscap_source_readable_origin(session->xccdf.result_source));
+				return -1;
+			}
+		}
+
+		if (session->export.xccdf_stig_viewer_file != NULL) {
+			struct oscap_source * stig_result = xccdf_result_stig_viewer_export_source(cloned_result, session->export.xccdf_stig_viewer_file);
+			if (oscap_source_save_as(stig_result, NULL) != 0) {
+				oscap_seterr(OSCAP_EFAMILY_OSCAP, "Could not save file: %s",
+						oscap_source_readable_origin(stig_result));
 				return -1;
 			}
 		}

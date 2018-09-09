@@ -22,7 +22,6 @@
 #include <config.h>
 #endif
 
-#include <stdio.h> // for P_tmpdir macro
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -41,17 +40,17 @@
 #include "common/_error.h"
 #include "oscap_string.h"
 
-#ifndef P_tmpdir
-#define P_tmpdir "/tmp"
+#ifndef OSCAP_TEMP_DIR
+#define OSCAP_TEMP_DIR "/tmp"
 #endif
 
-#define TEMP_DIR_TEMPLATE P_tmpdir "/oscap.XXXXXX"
+#define TEMP_DIR_TEMPLATE OSCAP_TEMP_DIR "/oscap.XXXXXX"
 #define TEMP_URL_TEMPLATE "downloaded.XXXXXX"
 
 char *
 oscap_acquire_temp_dir()
 {
-	char *temp_dir = strdup(TEMP_DIR_TEMPLATE);
+	char *temp_dir = oscap_strdup(TEMP_DIR_TEMPLATE);
 	if (mkdtemp(temp_dir) == NULL) {
 		free(temp_dir);
 		oscap_seterr(OSCAP_EFAMILY_GLIBC, "Could not create temp directory " TEMP_DIR_TEMPLATE ". %s", strerror(errno));
@@ -136,7 +135,7 @@ oscap_acquire_url_to_filename(const char *url)
 		oscap_seterr(OSCAP_EFAMILY_NET, "Failed to escape the given url %s", url);
 		return NULL;
 	}
-	filename = strdup(curl_filename);
+	filename = oscap_strdup(curl_filename);
 	curl_free(curl_filename);
 	curl_easy_cleanup(curl);
 	curl_global_cleanup();
@@ -208,11 +207,11 @@ char *oscap_acquire_guess_realpath(const char *filepath)
 
 	char *rpath = realpath(filepath, resolved_name);
 	if (rpath != NULL)
-		rpath = strdup(rpath);
+		rpath = oscap_strdup(rpath);
 	else {
 		// file does not exists, let's try to guess realpath
 		// this is not 100% correct, but it is good enough
-		char *copy = strdup(filepath);
+		char *copy = oscap_strdup(filepath);
 		if (copy == NULL) {
 			oscap_seterr(OSCAP_EFAMILY_OSCAP, "Cannot guess realpath for %s, directory: cannot allocate memory!", filepath);
 			return NULL;
