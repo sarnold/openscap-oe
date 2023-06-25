@@ -292,6 +292,11 @@ static int get_runlevel_wrlinux (struct runlevel_req *req, struct runlevel_rep *
         return (-1);
 }
 
+static int get_runlevel_poky (struct runlevel_req *req, struct runlevel_rep **rep)
+{
+        return (-1);
+}
+
 static int get_runlevel_common (struct runlevel_req *req, struct runlevel_rep **rep)
 {
         return (-1);
@@ -403,6 +408,11 @@ static int is_wrlinux(void)
 	return parse_os_release("cpe:/o:windriver:wrlinux");
 }
 
+static int is_poky(void)
+{
+	return parse_os_release("cpe:/o:yocto:poky");
+}
+
 static int is_common (void)
 {
         return (1);
@@ -424,6 +434,7 @@ const distro_tbl_t distro_tbl[] = {
         { &is_suse,     &get_runlevel_suse     },
         { &is_solaris,  &get_runlevel_redhat   },
         { &is_wrlinux,  &get_runlevel_wrlinux  },
+        { &is_poky,     &get_runlevel_poky     },
         { &is_common,   &get_runlevel_common   }
 };
 
